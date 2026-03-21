@@ -17,27 +17,27 @@ const server = http.createServer(app);
 const distributorRoutes = require("./routes/distributorRoutes");
 
 
-// ✅ Origines autorisées
-// const allowedOrigins = [
-//   //  'https://fahimtafrontend-cf7.herokuapp.com',
-//   //   'http://localhost:3000',
-//   //  'http://127.0.0.1:3000',
-//   'http://192.168.1.221:3000',
-
- 
-// ];
-
-
+// Origines autorisées
 const allowedOrigins = [
+    'https://flashrecharge-frontend-4dba11d4cbc0.herokuapp.com',
+  //   'http://localhost:3000',
+  //  'http://127.0.0.1:3000',
+  //'http://192.168.1.221:3000',
+
+ 
+];
 
 
- 'http://localhost:3000',
- 'http://127.0.0.1:3000',
-  'http://192.168.80.241:3000',
-  'http://192.168.0.100:3000'
+// const allowedOrigins = [
+
+
+//  'http://localhost:3000',
+//  'http://127.0.0.1:3000',
+//   'http://192.168.80.241:3000',
+//   'http://192.168.0.100:3000'
  
  
- ];
+//  ];
 
 // ✅ Middleware CORS dynamique
 app.use(cors({
