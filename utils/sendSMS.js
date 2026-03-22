@@ -8,12 +8,47 @@ const LEGACY_SMS_USERNAME = process.env.SMS_USERNAME;
 const LEGACY_SMS_PASSWORD = process.env.SMS_PASSWORD;
 const LEGACY_SMS_SENDER = process.env.SMS_SENDER || "Softlink";
 
+const UNIMTX_ACCESS_KEY_ID = process.env.UNIMTX_ACCESS_KEY_ID;
+const UNIMTX_API_URL = "https://api.unimtx.com/";
+
 const BEEM_SMS_API_URL = process.env.BEEM_SMS_API_URL || "https://apisms.beem.africa/v1/send";
 const BEEM_API_KEY = process.env.BEEM_API_KEY || process.env.SMS_USERNAME;
 const BEEM_SECRET_KEY = process.env.BEEM_SECRET_KEY || process.env.SMS_PASSWORD;
 const BEEM_SOURCE_ADDR = String(process.env.BEEM_SOURCE_ADDR || "INFO").trim();
 
 const normalizePhoneForBeem = (raw = "") => String(raw).replace(/\D/g, "");
+
+const sendSmsTemplate = async (to, templateId, templateParams = {}) => {
+  if (!UNIMTX_ACCESS_KEY_ID) {
+    console.error("❌ UNIMTX_ACCESS_KEY_ID manquant.");
+    return { success: false, error: "missing_unimtx_credentials" };
+  }
+
+  try {
+    const response = await axios.post(
+      `${UNIMTX_API_URL}?action=sms.message.send&accessKeyId=${UNIMTX_ACCESS_KEY_ID}`,
+      { to, templateId, templateParams },
+      { headers: { "Content-Type": "application/json" } }
+    );
+
+    const data = response.data;
+    if (data.code === "0") {
+      const providerMessageId = data?.data?.messages?.[0]?.id || null;
+      console.log("✅ SMS Unimtx envoyé:", providerMessageId);
+      return { success: true, providerMessageId, data };
+    }
+
+    console.error("❌ Unimtx erreur:", data);
+    return { success: false, error: data.message, data };
+  } catch (error) {
+    console.error("❌ Erreur réseau Unimtx:", error.message);
+    return { success: false, error: error.message };
+  }
+};
+
+const sendViaUnimtx = async (to, message) => {
+  return sendSmsTemplate(to, "pub_otp_basic_ttl_en", { code: message, ttl: "5" });
+};
 
 const sendViaBeem = async (to, message) => {
   if (!BEEM_API_KEY || !BEEM_SECRET_KEY) {
@@ -94,7 +129,9 @@ const sendViaLegacy = async (to, message) => {
 
 const resolveProvider = () => {
   const provider = String(process.env.SMS_PROVIDER || "").toLowerCase().trim();
-  if (provider === "beem" || provider === "legacy") return provider;
+  if (provider === "unimtx" || provider === "beem" || provider === "legacy") return provider;
+
+  if (UNIMTX_ACCESS_KEY_ID) return "unimtx";
 
   if (LEGACY_SMS_API_URL && !LEGACY_SMS_API_URL.includes("beem.africa")) {
     return "legacy";
@@ -114,9 +151,8 @@ const resolveProvider = () => {
 const sendSMS = async (to, message) => {
   try {
     const provider = resolveProvider();
-    if (provider === "legacy") {
-      return await sendViaLegacy(to, message);
-    }
+    if (provider === "legacy") return await sendViaLegacy(to, message);
+    if (provider === "unimtx") return await sendViaUnimtx(to, message);
 
     return await sendViaBeem(to, message);
 
@@ -143,4 +179,4 @@ const sendSMS = async (to, message) => {
   }
 };
 
-module.exports = { sendSMS };
+module.exports = { sendSMS, sendSmsTemplate };
